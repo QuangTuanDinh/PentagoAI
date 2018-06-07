@@ -8,24 +8,21 @@ import random
 # Game board that can place, twist, and check if a winner is found.
 class GameBoard:
     def __init__(self):
-        self.output_file = open('Output.txt', 'w')
         self.boards = []
         name = input('Please enter your name: ')
         if name == '':
             print('Name cannot be empty.')
             name = input('Please enter your name: ')
-        self.output_file.write("Your name: " + name + '\n')
         token = input('Please pick your token (b/w): ').lower()
         while token != 'b' and token != 'w':
             print('Invalid token.')
             token = input('Please pick your token (b/w): ').lower()
-        self.output_file.write("Your token: " + token + '\n')
         self.human = Player(name, token)
         if self.human.token == 'b':
             self.ai = AI('w')
         else:
             self.ai = AI('b')
-        self.output("AI's token: " + self.ai.token)
+        print("AI's token: " + self.ai.token)
 
         for i in range(4):
             block = []
@@ -35,16 +32,15 @@ class GameBoard:
 
     def start(self):
         if random.choice([1, 2]) == 1:
-            self.output('You make the first move.')
+            print('You make the first move.')
             self.human_turn()
         else:
-            self.output('AI makes the first move.')
-            self.ai.max = True
+            print('AI makes the first move.')
+            self.ai.is_max = True
             self.ai_turn()
 
     def human_turn(self):
         move = input("Enter your move: ")
-        self.output_file.write("Your move: " + move + '\n')
         self.place(self.human.token, int(move[0:1]), int(move[2:3]))
         self.twist(int(move[4:5]), move[5:6].lower())
         self.ai_turn()
@@ -52,52 +48,47 @@ class GameBoard:
     def ai_turn(self):
         print("AI's turn...")
         move = self.ai.play(self.boards)
-        self.output(
+        print(
             "AI's move: {}/{} {}{}".format(move.place_board, move.position, move.twist_board, move.direction.upper()))
         self.place(self.ai.token, move.place_board, move.position)
         self.twist(move.twist_board, move.direction)
         self.human_turn()
 
-    def output(self, message: str):
-        print(message)
-        self.output_file.write(message + '\n')
-        self.output_file.flush()
-
     def display(self):
-        self.output("+-------+-------+")
+        print("+-------+-------+")
         for i in range(3):
-            self.output('| {} {} {} | {} {} {} |'.format(self.boards[0][0 + 3 * i],
+            print('| {} {} {} | {} {} {} |'.format(self.boards[0][0 + 3 * i],
                                                          self.boards[0][1 + 3 * i],
                                                          self.boards[0][2 + 3 * i],
                                                          self.boards[1][0 + 3 * i],
                                                          self.boards[1][1 + 3 * i],
                                                          self.boards[1][2 + 3 * i]))
-        self.output("+-------+-------+")
+        print("+-------+-------+")
         for i in range(3):
-            self.output('| {} {} {} | {} {} {} |'.format(self.boards[2][0 + 3 * i],
+            print('| {} {} {} | {} {} {} |'.format(self.boards[2][0 + 3 * i],
                                                          self.boards[2][1 + 3 * i],
                                                          self.boards[2][2 + 3 * i],
                                                          self.boards[3][0 + 3 * i],
                                                          self.boards[3][1 + 3 * i],
                                                          self.boards[3][2 + 3 * i]))
-        self.output("+-------+-------+")
+        print("+-------+-------+")
 
     # Board: 1-4
     # Position: 1-9
     def place(self, the_piece: str, the_board: int, the_position: int):
         if the_board < 1 or the_board > 4 or the_position < 1 or the_position > 9 or \
                 self.boards[the_board - 1][the_position - 1] != '.':
-            self.output('Invalid move')
+            print('Invalid move')
             self.human_turn()
         else:
             self.boards[the_board - 1][the_position - 1] = the_piece
-            self.output('Place')
+            print('Placing: ' + str(the_board) + '/' + str(the_position))
             self.display()
             self.victory_check()
 
     def twist(self, the_board: int, the_direction: str):
         if the_board < 1 or the_board > 4 or the_direction.lower() != 'l' and the_direction.lower() != 'r':
-            self.output('Invalid twist')
+            print('Invalid twist')
             self.human_turn()
         else:
             board = self.boards[the_board - 1]
@@ -122,7 +113,7 @@ class GameBoard:
                 new_board[6] = board[7]
                 new_board[3] = board[6]
             self.boards[the_board - 1] = new_board
-            self.output('Twist')
+            print('Twisting: ' + str(the_board) + the_direction.upper())
             self.display()
             self.victory_check()
 
@@ -189,14 +180,11 @@ class GameBoard:
                     self.ai.victory = True
 
         if self.human.victory and self.ai.victory:
-            self.output('We have a tie!')
-            self.output_file.close()
+            print('We have a tie!')
             sys.exit()
         elif self.human.victory:
-            self.output('You won!')
-            self.output_file.close()
+            print('You won!')
             sys.exit()
         elif self.ai.victory:
-            self.output('You lost.')
-            self.output_file.close()
+            print('You lost.')
             sys.exit()

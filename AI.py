@@ -13,17 +13,19 @@ class Move:
 
 # This class is used to build the AI's game tree.
 class Node:
-    def __init__(self, the_boards: list, depth: int, token, move: Move, max_value):
+    def __init__(self, the_boards: list, depth: int, token, move: Move, is_max, alpha, beta):
         self.children = []
         self.boards = copy.deepcopy(the_boards)
         self.depth = depth
         self.token = token
         self.move = move
-        self.max = max_value
+        self.is_max = is_max
         self.best_node = None
         self.utility_value = math.inf
-        if self.max:
+        if self.is_max:
             self.utility_value = -math.inf
+        self.alpha = alpha
+        self.beta = beta
 
 
 # This class simulates a twist. It is used to generate the possible moves.
@@ -58,16 +60,16 @@ class AI:
         self.name = 'AI'
         self.token = the_token
         self.victory = False
-        self.max = False
+        self.is_max = False
         self.root = None
         self.max_depth = 3
         self.nodes_total = 0
 
     # Generates the game tree. It is call recursively until max depth is reached.
-    def generate_tree(self, current_node: Node, token):
+    def generate_tree(self, current_node: Node):
         if current_node.depth < self.max_depth:
             new_token = 'b'
-            if token == new_token:
+            if current_node.token == new_token:
                 new_token = 'w'
             seen_moves = []
             possible_moves = []
@@ -75,40 +77,54 @@ class AI:
                 for j in range(9):
                     if current_node.boards[i][j] == '.':
                         possible_moves.append([i, j])
+            exit_signal = False
             for move in possible_moves:
                 boards = copy.deepcopy(current_node.boards)
-                boards[move[0]][move[1]] = token
+                boards[move[0]][move[1]] = current_node.token
                 for board in range(4):
                     for direction in ['l', 'r']:
                         simulate_twist(boards, board, direction)
                         if boards not in seen_moves:
                             seen_moves.append(copy.deepcopy(boards))
-                            current_node.children.append(Node(boards, current_node.depth + 1, new_token,
-                                                              Move(move[0] + 1, move[1] + 1, board + 1, direction),
-                                                              not current_node.max))
+                            node = Node(boards, current_node.depth + 1, new_token,
+                                        Move(move[0] + 1, move[1] + 1, board + 1, direction),
+                                        not current_node.is_max, current_node.alpha, current_node.beta)
+                            current_node.children.append(node)
+                            self.generate_tree(node)
+                            if current_node.is_max:
+                                if current_node.alpha < node.utility_value:
+                                    current_node.alpha = node.utility_value
+                                if current_node.utility_value < node.utility_value:
+                                    current_node.utility_value = node.utility_value
+                                    current_node.best_node = node
 
-            for node in current_node.children:
-                self.generate_tree(node, new_token)
-                if current_node.max:
-                    if current_node.utility_value < node.utility_value:
-                        current_node.utility_value = node.utility_value
-                        current_node.best_node = node
-                else:
-                    if current_node.utility_value > node.utility_value:
-                        current_node.utility_value = node.utility_value
-                        current_node.best_node = node
+                            else:
+                                if current_node.beta > node.utility_value:
+                                    current_node.beta = node.utility_value
+                                if current_node.utility_value > node.utility_value:
+                                    current_node.utility_value = node.utility_value
+                                    current_node.best_node = node
+                            if current_node.alpha > current_node.beta or current_node.alpha == current_node.beta:
+                                exit_signal = True
+                                break
+                    if exit_signal:
+                        break
+
+                if exit_signal:
+                    break
+
         else:
             current_node.utility_value = self.utility(current_node.boards)
 
     def play(self, the_current_board: list):
-        self.root = Node(the_current_board, 0, self.token, None, self.max)
-        self.generate_tree(self.root, self.root.token)
+        self.root = Node(the_current_board, 0, self.token, None, self.is_max, -math.inf, math.inf)
+        self.generate_tree(self.root)
         return self.root.best_node.move
 
     def utility(self, the_boards: list):
         value = 0
         modifier = -1
-        if self.max:
+        if self.is_max:
             modifier = 1
         # Calculate columns
         for i in range(2):
